@@ -29,7 +29,25 @@ npm install
 
 ### 0.5. How To Run The CLI Locally
 
-Without building, run the TypeScript entrypoint directly from the repo root:
+You have three equivalent ways to run the CLI from a cloned repo:
+
+#### Option A: `npm start`
+
+These commands run the TypeScript entrypoint via the `start` script in `package.json`:
+
+```bash
+npm start -- get-key
+npm start -- list-spaces
+npm start -- list-spaces --login
+npm start -- list-spaces --login --configure
+npm start -- --allow-space <SPACE_ID>
+```
+
+`npm start` does not use the build artifact. It runs `tsx scripts/start-server.ts`.
+
+#### Option B: Run the TypeScript entrypoint directly
+
+These commands are equivalent to `npm start`, just without the npm wrapper:
 
 ```bash
 ./node_modules/.bin/tsx scripts/start-server.ts get-key
@@ -39,7 +57,9 @@ Without building, run the TypeScript entrypoint directly from the repo root:
 ./node_modules/.bin/tsx scripts/start-server.ts --allow-space <SPACE_ID>
 ```
 
-After `npm run build`, you can use the built executable instead:
+#### Option C: Run the built CLI executable
+
+After `npm run build`, you can use the generated build artifact instead:
 
 ```bash
 ./bin/cli.mjs get-key
@@ -62,7 +82,14 @@ After `npm run build`, you can use the built executable instead:
 You can also get your API key using the command line:
 
 ```bash
+npm start -- get-key
 ./node_modules/.bin/tsx scripts/start-server.ts get-key
+```
+
+After `npm run build`, this works too:
+
+```bash
+./bin/cli.mjs get-key
 ```
 
 </details>
@@ -70,6 +97,14 @@ You can also get your API key using the command line:
 ### 1.5. List Space IDs
 
 To discover the space IDs you want to allow, use the built-in bootstrap command:
+
+```bash
+ANYTYPE_API_KEY="<YOUR_API_KEY>" \
+ANYTYPE_API_VERSION="<ANYTYPE_VERSION>" \
+npm start -- list-spaces
+```
+
+Equivalent direct command:
 
 ```bash
 ANYTYPE_API_KEY="<YOUR_API_KEY>" \
@@ -86,10 +121,22 @@ It prints the accessible Anytype spaces with their `ID`, `TYPE`, and `NAME`. Use
 If you do not have a key yet, you can trigger the interactive login flow directly from `list-spaces`:
 
 ```bash
+npm start -- list-spaces --login
+```
+
+Equivalent direct command:
+
+```bash
 ./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login
 ```
 
 If you want to select spaces interactively with terminal checkboxes and immediately get a copy-paste MCP config JSON:
+
+```bash
+npm start -- list-spaces --login --configure
+```
+
+Equivalent direct command:
 
 ```bash
 ./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login --configure
@@ -183,6 +230,12 @@ IDs. Global tools like cross-space search and creating new spaces are intentiona
 > is available as an alias if you prefer that wording.
 
 ```bash
+npm start -- --allow-space space_abc123 --allow-channel space_def456
+```
+
+Equivalent direct command:
+
+```bash
 ./node_modules/.bin/tsx scripts/start-server.ts --allow-space space_abc123 --allow-channel space_def456
 ```
 
@@ -256,7 +309,17 @@ Here are some examples of how you can interact with your Anytype:
 
 ### Local Commands
 
-For day-to-day local usage from the repo root, these are the correct direct commands:
+For day-to-day local usage from the repo root, you can either use `npm start -- ...`:
+
+```bash
+npm start -- get-key
+ANYTYPE_API_KEY="<YOUR_API_KEY>" ANYTYPE_API_VERSION="<ANYTYPE_VERSION>" npm start -- list-spaces
+npm start -- list-spaces --login
+npm start -- list-spaces --login --configure
+npm start -- --allow-space space_abc123
+```
+
+Or call the TypeScript entrypoint directly:
 
 ```bash
 ./node_modules/.bin/tsx scripts/start-server.ts get-key
@@ -268,6 +331,7 @@ ANYTYPE_API_KEY="<YOUR_API_KEY>" ANYTYPE_API_VERSION="<ANYTYPE_VERSION>" ./node_
 
 What each one does:
 
+- `npm start -- [args...]`: runs the same TypeScript entrypoint as the direct `tsx` command
 - `./node_modules/.bin/tsx scripts/start-server.ts get-key`: interactive login, prints a fresh API key and version
 - `./node_modules/.bin/tsx scripts/start-server.ts list-spaces`: lists accessible spaces using existing env vars
 - `./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login`: logs in first, then lists spaces
