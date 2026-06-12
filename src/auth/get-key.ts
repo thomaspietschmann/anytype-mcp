@@ -11,16 +11,29 @@ export type AnytypeCredentials = {
   anytypeVersion: string;
 };
 
-export function displayCredentialsInstructions({ apiKey, anytypeVersion }: AnytypeCredentials): void {
+type CredentialInstructionOptions = {
+  includeMcpConfig?: boolean;
+};
+
+export function displayCredentialsInstructions(
+  { apiKey, anytypeVersion }: AnytypeCredentials,
+  options: CredentialInstructionOptions = {},
+): void {
   const localCliPath = path.resolve(process.cwd(), "bin/cli.mjs");
   const localTsxPath = path.resolve(process.cwd(), "node_modules/.bin/tsx");
   const localSourcePath = path.resolve(process.cwd(), "scripts/start-server.ts");
+  const { includeMcpConfig = true } = options;
   console.log(`\nYour API KEY: ${apiKey}`);
   console.log("\nFor local commands in this repo root, export:");
   console.log(`export ANYTYPE_API_KEY="${apiKey}"`);
   console.log(`export ANYTYPE_API_VERSION="${anytypeVersion}"`);
   console.log("\nThen you can discover space IDs with:");
   console.log(`${localTsxPath} ${localSourcePath} list-spaces --login --configure`);
+
+  if (!includeMcpConfig) {
+    return;
+  }
+
   console.log("\nAfter `npm run build`, you can add this to your MCP settings file as:");
   console.log(`
 {

@@ -50,6 +50,10 @@ export async function listSpaces(specPath?: string, options: ListSpacesOptions =
     if (selectedSpaces.length === 0) {
       console.log("\nNo spaces selected. Skipping MCP config output.");
     } else {
+      console.log("\nSelected spaces:");
+      selectedSpaces.forEach((space) => {
+        console.log(`- ${space.name ?? "(unnamed)"}: ${space.id ?? "<missing id>"}`);
+      });
       console.log("\nCopy-paste MCP config JSON:\n");
       console.log(JSON.stringify(buildMcpConfig(selectedSpaces, configCredentials ?? undefined), null, 2));
     }
@@ -59,7 +63,7 @@ export async function listSpaces(specPath?: string, options: ListSpacesOptions =
   }
 
   if (credentials) {
-    displayCredentialsInstructions(credentials);
+    displayCredentialsInstructions(credentials, { includeMcpConfig: !options.configure });
   }
 }
 
