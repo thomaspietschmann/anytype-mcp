@@ -19,6 +19,14 @@ It bridges the gap between AI and Anytype's powerful features by converting Anyt
 
 ## Quick Start
 
+### 0. Clone And Install
+
+```bash
+git clone <your-fork-url>
+cd anytype-mcp
+npm install
+```
+
 ### 1. Get Your API Key
 
 1. Open Anytype
@@ -32,12 +40,37 @@ It bridges the gap between AI and Anytype's powerful features by converting Anyt
 You can also get your API key using the command line:
 
 ```bash
-npx -y @anyproto/anytype-mcp get-key
+npm start -- get-key
 ```
 
 </details>
 
+### 1.5. List Space IDs
+
+To discover the space IDs you want to allow, use the built-in bootstrap command:
+
+```bash
+ANYTYPE_API_KEY="<YOUR_API_KEY>" \
+ANYTYPE_API_VERSION="<ANYTYPE_VERSION>" \
+npm start -- list-spaces
+```
+
+It prints the accessible Anytype spaces with their `ID`, `TYPE`, and `NAME`. Use the `ID` values with
+`--allow-space` or `--allow-channel`.
+
+`OPENAPI_MCP_HEADERS` is still supported for compatibility, but local commands are easier with `ANYTYPE_API_KEY` and
+`ANYTYPE_API_VERSION`.
+
 ### 2. Configure Your MCP Client
+
+First build the local executable:
+
+```bash
+npm run build
+```
+
+The build creates [bin/cli.mjs](/Users/tom/ai/anytype-mcp/bin/cli.mjs), which you can point your MCP client at
+directly. Use an absolute path in client config.
 
 #### Claude Desktop, Cursor, Windsurf, Raycast, etc.
 
@@ -47,10 +80,11 @@ Add the following configuration to your MCP client settings after replacing `<YO
 {
   "mcpServers": {
     "anytype": {
-      "command": "npx",
-      "args": ["-y", "@anyproto/anytype-mcp"],
+      "command": "/absolute/path/to/anytype-mcp/bin/cli.mjs",
+      "args": [],
       "env": {
-        "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer <YOUR_API_KEY>\", \"Anytype-Version\":\"2025-11-08\"}"
+        "ANYTYPE_API_KEY": "<YOUR_API_KEY>",
+        "ANYTYPE_API_VERSION": "<ANYTYPE_VERSION>"
       }
     }
   }
@@ -64,27 +98,22 @@ Add the following configuration to your MCP client settings after replacing `<YO
 Run this command to add the Anytype MCP server after replacing `<YOUR_API_KEY>` with your actual API key:
 
 ```bash
-claude mcp add anytype -e OPENAPI_MCP_HEADERS='{"Authorization":"Bearer <YOUR_API_KEY>", "Anytype-Version":"2025-11-08"}' -s user -- npx -y @anyproto/anytype-mcp
+claude mcp add anytype \
+  -e ANYTYPE_API_KEY='<YOUR_API_KEY>' \
+  -e ANYTYPE_API_VERSION='<ANYTYPE_VERSION>' \
+  -s user -- /absolute/path/to/anytype-mcp/bin/cli.mjs
 ```
 
 <details>
-<summary>Alternative: Global Installation</summary>
+<summary>Compatibility: OPENAPI_MCP_HEADERS</summary>
 
-If you prefer to install the package globally:
-
-1. Install the package:
-
-```bash
-npm install -g @anyproto/anytype-mcp
-```
-
-2. Update your MCP client configuration to use the global installation:
+If you already have an MCP client config that sets `OPENAPI_MCP_HEADERS`, that still works:
 
 ```json
 {
   "mcpServers": {
     "anytype": {
-      "command": "anytype-mcp",
+      "command": "/absolute/path/to/anytype-mcp/bin/cli.mjs",
       "env": {
         "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer <YOUR_API_KEY>\", \"Anytype-Version\":\"2025-11-08\"}"
       }
@@ -94,6 +123,41 @@ npm install -g @anyproto/anytype-mcp
 ```
 
 </details>
+
+### Restrict MCP Access To Specific Spaces / Channels
+
+If you do not want the MCP server to see your full Anytype vault, start it with one or more `--allow-space` flags.
+When this allowlist is active, the server only exposes space-bound tools plus a restricted `list-spaces` view for those
+IDs. Global tools like cross-space search and creating new spaces are intentionally hidden.
+
+> Anytype chat channels are spaces with object type `chat`, so `--allow-space` also covers channels. `--allow-channel`
+> is available as an alias if you prefer that wording.
+
+```bash
+./bin/cli.mjs --allow-space space_abc123 --allow-channel space_def456
+```
+
+For MCP clients that use JSON config, add the flags to `args`:
+
+```json
+{
+  "mcpServers": {
+    "anytype": {
+      "command": "/absolute/path/to/anytype-mcp/bin/cli.mjs",
+      "args": [
+        "--allow-space",
+        "space_abc123",
+        "--allow-space",
+        "space_def456"
+      ],
+      "env": {
+        "ANYTYPE_API_KEY": "<YOUR_API_KEY>",
+        "ANYTYPE_API_VERSION": "<ANYTYPE_VERSION>"
+      }
+    }
+  }
+}
+```
 
 ### Custom API Base URL
 
@@ -107,11 +171,12 @@ By default, the server connects to `http://127.0.0.1:31009`. For `anytype-cli` (
 {
   "mcpServers": {
     "anytype": {
-      "command": "npx",
-      "args": ["-y", "@anyproto/anytype-mcp"],
+      "command": "/absolute/path/to/anytype-mcp/bin/cli.mjs",
+      "args": [],
       "env": {
         "ANYTYPE_API_BASE_URL": "http://localhost:31012",
-        "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer <YOUR_API_KEY>\", \"Anytype-Version\":\"2025-11-08\"}"
+        "ANYTYPE_API_KEY": "<YOUR_API_KEY>",
+        "ANYTYPE_API_VERSION": "<ANYTYPE_VERSION>"
       }
     }
   }
@@ -122,8 +187,9 @@ By default, the server connects to `http://127.0.0.1:31009`. For `anytype-cli` (
 ```bash
 claude mcp add anytype \
   -e ANYTYPE_API_BASE_URL='http://localhost:31012' \
-  -e OPENAPI_MCP_HEADERS='{"Authorization":"Bearer <YOUR_API_KEY>", "Anytype-Version":"2025-11-08"}' \
-  -s user -- npx -y @anyproto/anytype-mcp
+  -e ANYTYPE_API_KEY='<YOUR_API_KEY>' \
+  -e ANYTYPE_API_VERSION='<ANYTYPE_VERSION>' \
+  -s user -- /absolute/path/to/anytype-mcp/bin/cli.mjs
 ```
 
 </details>
@@ -139,31 +205,22 @@ Here are some examples of how you can interact with your Anytype:
 
 ## Development
 
-### Installation from Source
+### Local Commands
 
-1. Clone the repository:
-
-```bash
-git clone https://github.com/anyproto/anytype-mcp.git
-cd anytype-mcp
-```
-
-2. Install dependencies:
+Run one-off commands from the repo root:
 
 ```bash
-npm install -D
+npm start -- get-key
+npm start -- list-spaces
+npm start -- --allow-space space_abc123
 ```
 
-3. Build the project:
+When you want to use the built executable directly:
 
 ```bash
 npm run build
-```
-
-4. Link the package globally (optional):
-
-```bash
-npm link
+./bin/cli.mjs list-spaces
+./bin/cli.mjs --allow-space space_abc123
 ```
 
 ## Contribution

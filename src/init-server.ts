@@ -3,6 +3,7 @@ import axios from "axios";
 import fs from "node:fs";
 import path from "node:path";
 import { OpenAPIV3 } from "openapi-types";
+import { AccessPolicyConfig } from "./mcp/access-policy";
 import { MCPProxy } from "./mcp/proxy";
 import { getDefaultSpecUrl } from "./utils/base-url";
 
@@ -47,10 +48,10 @@ export async function loadOpenApiSpec(specPath?: string): Promise<OpenAPIV3.Docu
   }
 }
 
-export async function initProxy(specPath: string) {
+export async function initProxy(specPath?: string, accessPolicyConfig: AccessPolicyConfig = {}) {
   console.error("Initializing Anytype MCP Server...");
   const openApiSpec = await loadOpenApiSpec(specPath);
-  const proxy = new MCPProxy("Anytype API", openApiSpec);
+  const proxy = new MCPProxy("Anytype API", openApiSpec, accessPolicyConfig);
 
   await proxy.connect(new StdioServerTransport());
   console.error("Anytype MCP Server running on stdio");

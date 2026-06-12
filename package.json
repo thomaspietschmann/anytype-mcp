@@ -11,6 +11,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "start": "tsx scripts/start-server.ts",
     "test": "vitest run",
     "test:dev": "vitest watch",
     "build": "tsc -build && node scripts/build-cli.js",

@@ -194,8 +194,9 @@ describe("main", () => {
 
   it("should run the server when being called without a command", async () => {
     vi.resetModules();
+    const initProxy = vi.fn().mockResolvedValue(undefined);
     vi.doMock("../../src/init-server", () => ({
-      initProxy: vi.fn().mockResolvedValue(undefined),
+      initProxy,
       loadOpenApiSpec: vi.fn().mockResolvedValue(validOpenApiSpec),
       ValidationError: class ValidationError extends Error {
         errors: any[];
@@ -211,6 +212,52 @@ describe("main", () => {
     const { main } = await import("../start-server");
     await main([]);
     expect(mockExit).not.toHaveBeenCalled();
+    expect(initProxy).toHaveBeenCalledWith(undefined, { allowedSpaceIds: [] });
+  });
+
+  it("should forward allow-space restrictions to initProxy", async () => {
+    vi.resetModules();
+    const initProxy = vi.fn().mockResolvedValue(undefined);
+    vi.doMock("../../src/init-server", () => ({
+      initProxy,
+      loadOpenApiSpec: vi.fn().mockResolvedValue(validOpenApiSpec),
+      ValidationError: class ValidationError extends Error {
+        errors: any[];
+        constructor(errors: any[]) {
+          super("OpenAPI validation failed");
+          this.name = "ValidationError";
+          this.errors = errors;
+        }
+      },
+    }));
+
+    const { main } = await import("../start-server");
+    await main(["--allow-space", "space-1", "--allow-channel", "space-2"]);
+    expect(initProxy).toHaveBeenCalledWith(undefined, { allowedSpaceIds: ["space-1", "space-2"] });
+  });
+
+  it("should route list-spaces to the bootstrap command", async () => {
+    vi.resetModules();
+    const listSpaces = vi.fn().mockResolvedValue(undefined);
+    vi.doMock("../../src/init-server", () => ({
+      initProxy: vi.fn().mockResolvedValue(undefined),
+      loadOpenApiSpec: vi.fn().mockResolvedValue(validOpenApiSpec),
+      ValidationError: class ValidationError extends Error {
+        errors: any[];
+        constructor(errors: any[]) {
+          super("OpenAPI validation failed");
+          this.name = "ValidationError";
+          this.errors = errors;
+        }
+      },
+    }));
+    vi.doMock("../../src/cli/list-spaces", () => ({
+      listSpaces,
+    }));
+
+    const { main } = await import("../start-server");
+    await main(["list-spaces", "./openapi.json"]);
+    expect(listSpaces).toHaveBeenCalledWith("./openapi.json");
   });
 
   it("should error on unknown command", async () => {
@@ -228,10 +275,8 @@ describe("main", () => {
       },
     }));
 
-    const mockExit = vi.spyOn(process, "exit").mockImplementation((() => {}) as any);
     const { main } = await import("../start-server");
-    await main(["unknown"]);
-    expect(mockExit).toHaveBeenCalledWith(1);
+    await expect(main(["unknown"])).rejects.toThrow('Unknown command "unknown"');
   });
 });
 

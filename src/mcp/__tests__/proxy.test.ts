@@ -25,9 +25,33 @@ describe("MCPProxy", () => {
     servers: [{ url: "http://localhost:3000" }],
     info: { title: "Test API", version: "1.0.0" },
     paths: {
-      "/test": {
+      "/v1/search": {
+        post: {
+          operationId: "search_global",
+          responses: { "200": { description: "Success" } },
+        },
+      },
+      "/v1/spaces": {
         get: {
-          operationId: "getTest",
+          operationId: "list_spaces",
+          responses: { "200": { description: "Success" } },
+        },
+        post: {
+          operationId: "create_space",
+          responses: { "200": { description: "Success" } },
+        },
+      },
+      "/v1/spaces/{space_id}": {
+        get: {
+          operationId: "get_space",
+          parameters: [{ in: "path", name: "space_id", required: true, schema: { type: "string" } }],
+          responses: { "200": { description: "Success" } },
+        },
+      },
+      "/v1/spaces/{space_id}/objects": {
+        get: {
+          operationId: "list_objects",
+          parameters: [{ in: "path", name: "space_id", required: true, schema: { type: "string" } }],
           responses: { "200": { description: "Success" } },
         },
       },
@@ -79,17 +103,8 @@ describe("MCPProxy", () => {
     it("should execute operation and return formatted response", async () => {
       (HttpClient.prototype.executeOperation as ReturnType<typeof vi.fn>).mockResolvedValue(mockSuccessResponse);
 
-      (proxy as any).openApiLookup = {
-        "API-getTest": {
-          operationId: "getTest",
-          responses: { "200": { description: "Success" } },
-          method: "get",
-          path: "/test",
-        },
-      };
-
       const [, callToolHandler] = getHandlers(proxy);
-      const result = await callToolHandler({ params: { name: "API-getTest", arguments: {} } });
+      const result = await callToolHandler({ params: { name: "API-get-space", arguments: { space_id: "space-1" } } });
 
       expect(result).toEqual({
         content: [{ type: "text", text: JSON.stringify({ message: "success" }) }],
@@ -114,7 +129,7 @@ describe("MCPProxy", () => {
           operationId: longToolName,
           responses: { "200": { description: "Success" } },
           method: "get",
-          path: "/test",
+          path: "/v1/spaces/{space_id}",
         },
       };
 
@@ -164,6 +179,8 @@ describe("MCPProxy", () => {
 
     it("should return empty object when env var is not set", () => {
       delete process.env.OPENAPI_MCP_HEADERS;
+      delete process.env.ANYTYPE_API_KEY;
+      delete process.env.ANYTYPE_API_VERSION;
       new MCPProxy("test-proxy", mockOpenApiSpec);
       expectHeaders({});
     });
@@ -188,6 +205,14 @@ describe("MCPProxy", () => {
         "OPENAPI_MCP_HEADERS environment variable must be a JSON object, got:",
         "string",
       );
+    });
+
+    it("should build auth headers from ANYTYPE_API_KEY and ANYTYPE_API_VERSION", () => {
+      delete process.env.OPENAPI_MCP_HEADERS;
+      process.env.ANYTYPE_API_KEY = "token123";
+      process.env.ANYTYPE_API_VERSION = "2025-11-08";
+      new MCPProxy("test-proxy", mockOpenApiSpec);
+      expectHeaders({ Authorization: "Bearer token123", "Anytype-Version": "2025-11-08" });
     });
   });
 
@@ -221,6 +246,81 @@ describe("MCPProxy", () => {
       delete process.env.ANYTYPE_API_BASE_URL;
       new MCPProxy("test-proxy", createMockOpenApiSpec({ servers: undefined }));
       expectBaseUrl("http://127.0.0.1:31009");
+    });
+  });
+
+  describe("space restrictions", () => {
+    it("hides non-space-scoped tools when allow-space is configured", async () => {
+      const restrictedProxy = new MCPProxy("test-proxy", mockOpenApiSpec, { allowedSpaceIds: ["space-1"] });
+      const [listToolsHandler] = getHandlers(restrictedProxy);
+      const result = await listToolsHandler();
+
+      expect(result.tools.map((tool: { name: string }) => tool.name)).toEqual([
+        "API-list-spaces",
+        "API-get-space",
+        "API-list-objects",
+      ]);
+    });
+
+    it("rejects tool calls outside the allowed spaces", async () => {
+      const restrictedProxy = new MCPProxy("test-proxy", mockOpenApiSpec, { allowedSpaceIds: ["space-1"] });
+      const [, callToolHandler] = getHandlers(restrictedProxy);
+
+      await expect(
+        callToolHandler({ params: { name: "API-list-objects", arguments: { space_id: "space-2" } } }),
+      ).rejects.toThrow('Access to Anytype space "space-2" is not allowed.');
+    });
+
+    it("rebuilds list-spaces from the configured allowlist", async () => {
+      (HttpClient.prototype.executeOperation as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          data: { space: { id: "space-1", name: "Alpha", object: "space" } },
+          status: 200,
+          headers: new Headers({ "content-type": "application/json" }),
+        })
+        .mockResolvedValueOnce({
+          data: { space: { id: "space-2", name: "Beta", object: "chat" } },
+          status: 200,
+          headers: new Headers({ "content-type": "application/json" }),
+        });
+
+      const restrictedProxy = new MCPProxy("test-proxy", mockOpenApiSpec, {
+        allowedSpaceIds: ["space-1", "space-2"],
+      });
+      const [, callToolHandler] = getHandlers(restrictedProxy);
+      const result = await callToolHandler({
+        params: { name: "API-list-spaces", arguments: { offset: 0, limit: 10 } },
+      });
+
+      expect(result).toEqual({
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              data: [
+                { id: "space-1", name: "Alpha", object: "space" },
+                { id: "space-2", name: "Beta", object: "chat" },
+              ],
+              pagination: {
+                offset: 0,
+                limit: 10,
+                total: 2,
+                has_more: false,
+              },
+            }),
+          },
+        ],
+      });
+      expect(HttpClient.prototype.executeOperation).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ operationId: "get_space", path: "/v1/spaces/{space_id}" }),
+        { space_id: "space-1" },
+      );
+      expect(HttpClient.prototype.executeOperation).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ operationId: "get_space", path: "/v1/spaces/{space_id}" }),
+        { space_id: "space-2" },
+      );
     });
   });
 

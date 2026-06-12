@@ -1,0 +1,82 @@
+import { OpenAPIV3 } from "openapi-types";
+import { Headers } from "node-fetch";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HttpClient } from "../../client/http-client";
+import { fetchSpaces, formatSpacesTable } from "../list-spaces";
+
+vi.mock("../../client/http-client");
+vi.mock("../../init-server");
+vi.mock("../../utils/base-url");
+
+describe("list-spaces bootstrap", () => {
+  const sampleSpec: OpenAPIV3.Document = {
+    openapi: "3.0.0",
+    info: { title: "Anytype API", version: "1.0.0" },
+    servers: [{ url: "http://localhost:31009" }],
+    paths: {
+      "/v1/spaces": {
+        get: {
+          operationId: "list_spaces",
+          responses: {
+            "200": { description: "OK" },
+          },
+        },
+      },
+    },
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const initServer = await import("../../init-server");
+    const baseUrl = await import("../../utils/base-url");
+    vi.mocked(initServer.loadOpenApiSpec).mockResolvedValue(sampleSpec);
+    vi.mocked(baseUrl.determineBaseUrl).mockReturnValue("http://localhost:31009");
+  });
+
+  it("fetches spaces through the Anytype API", async () => {
+    (HttpClient.prototype.executeOperation as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        data: [
+          { id: "space-1", name: "Alpha", object: "space" },
+          { id: "space-2", name: "Team Chat", object: "chat" },
+        ],
+      },
+      status: 200,
+      headers: new Headers(),
+    });
+
+    const spaces = await fetchSpaces();
+
+    expect(spaces).toEqual([
+      { id: "space-1", name: "Alpha", object: "space" },
+      { id: "space-2", name: "Team Chat", object: "chat" },
+    ]);
+    expect(HttpClient.prototype.executeOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: "list_spaces", method: "get", path: "/v1/spaces" }),
+      {},
+    );
+  });
+
+  it("fails clearly when the spec does not expose list spaces", async () => {
+    const initServer = await import("../../init-server");
+    vi.mocked(initServer.loadOpenApiSpec).mockResolvedValue({
+      ...sampleSpec,
+      paths: {},
+    });
+
+    await expect(fetchSpaces()).rejects.toThrow("The OpenAPI specification does not expose GET /v1/spaces.");
+  });
+
+  it("formats a readable table", () => {
+    expect(
+      formatSpacesTable([
+        { id: "space-1", name: "Alpha", object: "space" },
+        { id: "space-22", name: "Team Chat", object: "chat" },
+      ]),
+    ).toBe(
+      ["ID        TYPE   NAME", "--------  -----  ----", "space-1   space  Alpha", "space-22  chat   Team Chat"].join(
+        "\n",
+      ),
+    );
+  });
+});

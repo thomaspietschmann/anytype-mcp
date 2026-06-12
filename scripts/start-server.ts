@@ -1,4 +1,6 @@
 import { ApiKeyGenerator } from "../src/auth/get-key";
+import { formatCliHelp, parseCliArgs } from "../src/cli/args";
+import { listSpaces } from "../src/cli/list-spaces";
 import { initProxy, loadOpenApiSpec, ValidationError } from "../src/init-server";
 import { determineBaseUrl } from "../src/utils/base-url";
 
@@ -10,14 +12,19 @@ async function generateApiKey(specPath?: string) {
 }
 
 export async function main(args: string[] = process.argv.slice(2)) {
-  const [command, specPath] = args;
-  if (!command || command === "run") {
-    await initProxy(specPath);
-  } else if (command === "get-key") {
-    await generateApiKey(specPath);
-  } else {
-    console.error(`Error: Unknown command "${command}"`);
-    process.exit(1);
+  const parsedArgs = parseCliArgs(args);
+
+  if (parsedArgs.showHelp) {
+    console.log(formatCliHelp());
+    return;
+  }
+
+  if (parsedArgs.command === "run") {
+    await initProxy(parsedArgs.specPath, parsedArgs.accessPolicy);
+  } else if (parsedArgs.command === "get-key") {
+    await generateApiKey(parsedArgs.specPath);
+  } else if (parsedArgs.command === "list-spaces") {
+    await listSpaces(parsedArgs.specPath);
   }
 }
 

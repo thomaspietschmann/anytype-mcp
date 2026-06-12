@@ -1,4 +1,5 @@
 import axios from "axios";
+import path from "node:path";
 import * as readline from "readline";
 
 interface AuthToken {
@@ -25,19 +26,22 @@ export class ApiKeyGenerator {
   }
 
   private displaySuccessMessage(apiKey: string, anytypeVersion: string): void {
+    const localCliPath = path.resolve(process.cwd(), "bin/cli.mjs");
     console.log(`\nYour API KEY: ${apiKey}`);
-    console.log("\nAdd this to your MCP settings file as:");
+    console.log("\nFor local commands in this repo root, export:");
+    console.log(`export ANYTYPE_API_KEY="${apiKey}"`);
+    console.log(`export ANYTYPE_API_VERSION="${anytypeVersion}"`);
+    console.log("\nThen you can discover space IDs with:");
+    console.log("npm start -- list-spaces");
+    console.log("\nAfter `npm run build`, add this to your MCP settings file as:");
     console.log(`
 {
   "mcpServers": {
     "anytype": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@anyproto/anytype-mcp",
-      ],
+      "command": "${localCliPath}",
       "env": {
-        "OPENAPI_MCP_HEADERS": "{\\"Authorization\\":\\"Bearer ${apiKey}\\", \\"Anytype-Version\\":\\"${anytypeVersion}\\"}"
+        "ANYTYPE_API_KEY": "${apiKey}",
+        "ANYTYPE_API_VERSION": "${anytypeVersion}"
       }
     }
   }
