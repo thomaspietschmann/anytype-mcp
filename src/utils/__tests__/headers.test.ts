@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { parseHeadersFromEnv } from "../headers";
+import { getCredentialsFromEnv, parseHeadersFromEnv } from "../headers";
 
 describe("parseHeadersFromEnv", () => {
   const originalEnv = process.env;
@@ -64,5 +64,49 @@ describe("parseHeadersFromEnv", () => {
     delete process.env.ANYTYPE_VERSION;
 
     expect(parseHeadersFromEnv()).toEqual({});
+  });
+});
+
+describe("getCredentialsFromEnv", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    vi.restoreAllMocks();
+  });
+
+  it("extracts credentials from OPENAPI_MCP_HEADERS", () => {
+    process.env.OPENAPI_MCP_HEADERS = JSON.stringify({
+      Authorization: "Bearer token123",
+      "Anytype-Version": "2025-11-08",
+    });
+
+    expect(getCredentialsFromEnv()).toEqual({
+      apiKey: "token123",
+      anytypeVersion: "2025-11-08",
+    });
+  });
+
+  it("extracts credentials from ANYTYPE_API_KEY and ANYTYPE_API_VERSION", () => {
+    process.env.ANYTYPE_API_KEY = "token123";
+    process.env.ANYTYPE_API_VERSION = "2025-11-08";
+
+    expect(getCredentialsFromEnv()).toEqual({
+      apiKey: "token123",
+      anytypeVersion: "2025-11-08",
+    });
+  });
+
+  it("returns null when no bearer token is available", () => {
+    process.env.OPENAPI_MCP_HEADERS = JSON.stringify({
+      Authorization: "Basic abc",
+      "Anytype-Version": "2025-11-08",
+    });
+
+    expect(getCredentialsFromEnv()).toBeNull();
   });
 });

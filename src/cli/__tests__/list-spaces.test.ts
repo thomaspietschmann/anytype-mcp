@@ -3,7 +3,7 @@ import { Headers } from "node-fetch";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiKeyGenerator } from "../../auth/get-key";
 import { HttpClient } from "../../client/http-client";
-import { fetchSpaces, formatSpacesTable } from "../list-spaces";
+import { buildMcpConfig, fetchSpaces, formatSpacesTable, renderSpaceCheckboxList } from "../list-spaces";
 
 vi.mock("../../auth/get-key");
 vi.mock("../../client/http-client");
@@ -113,5 +113,55 @@ describe("list-spaces bootstrap", () => {
         "\n",
       ),
     );
+  });
+
+  it("renders interactive checkbox options", () => {
+    expect(
+      renderSpaceCheckboxList(
+        [
+          { id: "space-1", name: "Alpha", object: "space" },
+          { id: "space-22", name: "Team Chat", object: "chat" },
+        ],
+        { cursor: 1, selected: new Set([0]) },
+      ),
+    ).toBe(
+      [
+        "Use Up/Down to move, Space to toggle, Enter to confirm, A to toggle all, Q to cancel.\n",
+        "  [x] Alpha (space)",
+        "    space-1",
+        "> [ ] Team Chat (chat)",
+        "    space-22",
+      ].join("\n"),
+    );
+  });
+
+  it("builds a copy-paste MCP config", () => {
+    expect(
+      buildMcpConfig(
+        [
+          { id: "space-1", name: "Alpha", object: "space" },
+          { id: "space-22", name: "Team Chat", object: "chat" },
+        ],
+        { apiKey: "token123", anytypeVersion: "2025-11-08" },
+        "/workspace/anytype-mcp",
+      ),
+    ).toEqual({
+      mcpServers: {
+        anytype: {
+          command: "/workspace/anytype-mcp/node_modules/.bin/tsx",
+          args: [
+            "/workspace/anytype-mcp/scripts/start-server.ts",
+            "--allow-space",
+            "space-1",
+            "--allow-space",
+            "space-22",
+          ],
+          env: {
+            ANYTYPE_API_KEY: "token123",
+            ANYTYPE_API_VERSION: "2025-11-08",
+          },
+        },
+      },
+    });
   });
 });

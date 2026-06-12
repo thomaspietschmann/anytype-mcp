@@ -257,7 +257,7 @@ describe("main", () => {
 
     const { main } = await import("../start-server");
     await main(["list-spaces", "./openapi.json"]);
-    expect(listSpaces).toHaveBeenCalledWith("./openapi.json", { login: false });
+    expect(listSpaces).toHaveBeenCalledWith("./openapi.json", { login: false, configure: false });
   });
 
   it("should forward --login to list-spaces", async () => {
@@ -281,7 +281,31 @@ describe("main", () => {
 
     const { main } = await import("../start-server");
     await main(["list-spaces", "--login"]);
-    expect(listSpaces).toHaveBeenCalledWith(undefined, { login: true });
+    expect(listSpaces).toHaveBeenCalledWith(undefined, { login: true, configure: false });
+  });
+
+  it("should forward --configure to list-spaces", async () => {
+    vi.resetModules();
+    const listSpaces = vi.fn().mockResolvedValue(undefined);
+    vi.doMock("../../src/init-server", () => ({
+      initProxy: vi.fn().mockResolvedValue(undefined),
+      loadOpenApiSpec: vi.fn().mockResolvedValue(validOpenApiSpec),
+      ValidationError: class ValidationError extends Error {
+        errors: any[];
+        constructor(errors: any[]) {
+          super("OpenAPI validation failed");
+          this.name = "ValidationError";
+          this.errors = errors;
+        }
+      },
+    }));
+    vi.doMock("../../src/cli/list-spaces", () => ({
+      listSpaces,
+    }));
+
+    const { main } = await import("../start-server");
+    await main(["list-spaces", "--configure"]);
+    expect(listSpaces).toHaveBeenCalledWith(undefined, { login: false, configure: true });
   });
 
   it("should error on unknown command", async () => {

@@ -13,13 +13,15 @@ export type AnytypeCredentials = {
 
 export function displayCredentialsInstructions({ apiKey, anytypeVersion }: AnytypeCredentials): void {
   const localCliPath = path.resolve(process.cwd(), "bin/cli.mjs");
+  const localTsxPath = path.resolve(process.cwd(), "node_modules/.bin/tsx");
+  const localSourcePath = path.resolve(process.cwd(), "scripts/start-server.ts");
   console.log(`\nYour API KEY: ${apiKey}`);
   console.log("\nFor local commands in this repo root, export:");
   console.log(`export ANYTYPE_API_KEY="${apiKey}"`);
   console.log(`export ANYTYPE_API_VERSION="${anytypeVersion}"`);
   console.log("\nThen you can discover space IDs with:");
-  console.log("npm start -- list-spaces");
-  console.log("\nAfter `npm run build`, add this to your MCP settings file as:");
+  console.log(`${localTsxPath} ${localSourcePath} list-spaces --login --configure`);
+  console.log("\nAfter `npm run build`, you can add this to your MCP settings file as:");
   console.log(`
 {
   "mcpServers": {

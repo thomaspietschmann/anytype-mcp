@@ -35,6 +35,7 @@ Without building, run the TypeScript entrypoint directly from the repo root:
 ./node_modules/.bin/tsx scripts/start-server.ts get-key
 ./node_modules/.bin/tsx scripts/start-server.ts list-spaces
 ./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login --configure
 ./node_modules/.bin/tsx scripts/start-server.ts --allow-space <SPACE_ID>
 ```
 
@@ -44,6 +45,7 @@ After `npm run build`, you can use the built executable instead:
 ./bin/cli.mjs get-key
 ./bin/cli.mjs list-spaces
 ./bin/cli.mjs list-spaces --login
+./bin/cli.mjs list-spaces --login --configure
 ./bin/cli.mjs --allow-space <SPACE_ID>
 ```
 
@@ -86,6 +88,27 @@ If you do not have a key yet, you can trigger the interactive login flow directl
 ```bash
 ./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login
 ```
+
+If you want to select spaces interactively with terminal checkboxes and immediately get a copy-paste MCP config JSON:
+
+```bash
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login --configure
+```
+
+This mode:
+
+- logs in interactively if needed
+- shows a checkbox list in the terminal
+- lets you move with arrow keys and toggle with space
+- prints a ready-to-paste MCP config JSON with the selected `--allow-space` entries
+
+Controls in the checkbox view:
+
+- `Up` / `Down`: move
+- `Space`: toggle current entry
+- `A`: toggle all
+- `Enter`: confirm selection
+- `Q` / `Esc`: cancel
 
 ### 2. Configure Your MCP Client
 
@@ -239,6 +262,7 @@ For day-to-day local usage from the repo root, these are the correct direct comm
 ./node_modules/.bin/tsx scripts/start-server.ts get-key
 ANYTYPE_API_KEY="<YOUR_API_KEY>" ANYTYPE_API_VERSION="<ANYTYPE_VERSION>" ./node_modules/.bin/tsx scripts/start-server.ts list-spaces
 ./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login --configure
 ./node_modules/.bin/tsx scripts/start-server.ts --allow-space space_abc123
 ```
 
@@ -247,6 +271,7 @@ What each one does:
 - `./node_modules/.bin/tsx scripts/start-server.ts get-key`: interactive login, prints a fresh API key and version
 - `./node_modules/.bin/tsx scripts/start-server.ts list-spaces`: lists accessible spaces using existing env vars
 - `./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login`: logs in first, then lists spaces
+- `./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login --configure`: logs in, shows interactive checkboxes, and prints MCP config JSON
 - `./node_modules/.bin/tsx scripts/start-server.ts [args...]`: runs the MCP server locally and accepts CLI args such as `--allow-space`
 
 When you want to use the built executable directly:
@@ -255,6 +280,7 @@ When you want to use the built executable directly:
 npm run build
 ./bin/cli.mjs list-spaces
 ./bin/cli.mjs list-spaces --login
+./bin/cli.mjs list-spaces --login --configure
 ./bin/cli.mjs get-key
 ./bin/cli.mjs --allow-space space_abc123
 ```
