@@ -7,6 +7,7 @@ describe("parseCliArgs", () => {
       command: "run",
       specPath: undefined,
       showHelp: false,
+      login: false,
       accessPolicy: { allowedSpaceIds: [] },
     });
   });
@@ -16,6 +17,7 @@ describe("parseCliArgs", () => {
       command: "run",
       specPath: undefined,
       showHelp: false,
+      login: false,
       accessPolicy: { allowedSpaceIds: ["space-1", "space-2"] },
     });
   });
@@ -29,6 +31,7 @@ describe("parseCliArgs", () => {
       command: "get-key",
       specPath: "./openapi.json",
       showHelp: false,
+      login: false,
       accessPolicy: { allowedSpaceIds: [] },
     });
   });
@@ -38,6 +41,17 @@ describe("parseCliArgs", () => {
       command: "list-spaces",
       specPath: "./openapi.json",
       showHelp: false,
+      login: false,
+      accessPolicy: { allowedSpaceIds: [] },
+    });
+  });
+
+  it("parses list-spaces --login", () => {
+    expect(parseCliArgs(["list-spaces", "--login"])).toEqual({
+      command: "list-spaces",
+      specPath: undefined,
+      showHelp: false,
+      login: true,
       accessPolicy: { allowedSpaceIds: [] },
     });
   });
@@ -54,7 +68,11 @@ describe("parseCliArgs", () => {
     );
   });
 
+  it("rejects --login outside list-spaces", () => {
+    expect(() => parseCliArgs(["get-key", "--login"])).toThrow("--login can only be used with list-spaces.");
+  });
+
   it("returns help text", () => {
-    expect(formatCliHelp()).toContain("--allow-space");
+    expect(formatCliHelp()).toContain("--login");
   });
 });

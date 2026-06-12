@@ -27,6 +27,26 @@ cd anytype-mcp
 npm install
 ```
 
+### 0.5. How To Run The CLI Locally
+
+Without building, run the TypeScript entrypoint directly from the repo root:
+
+```bash
+./node_modules/.bin/tsx scripts/start-server.ts get-key
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login
+./node_modules/.bin/tsx scripts/start-server.ts --allow-space <SPACE_ID>
+```
+
+After `npm run build`, you can use the built executable instead:
+
+```bash
+./bin/cli.mjs get-key
+./bin/cli.mjs list-spaces
+./bin/cli.mjs list-spaces --login
+./bin/cli.mjs --allow-space <SPACE_ID>
+```
+
 ### 1. Get Your API Key
 
 1. Open Anytype
@@ -40,7 +60,7 @@ npm install
 You can also get your API key using the command line:
 
 ```bash
-npm start -- get-key
+./node_modules/.bin/tsx scripts/start-server.ts get-key
 ```
 
 </details>
@@ -52,7 +72,7 @@ To discover the space IDs you want to allow, use the built-in bootstrap command:
 ```bash
 ANYTYPE_API_KEY="<YOUR_API_KEY>" \
 ANYTYPE_API_VERSION="<ANYTYPE_VERSION>" \
-npm start -- list-spaces
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces
 ```
 
 It prints the accessible Anytype spaces with their `ID`, `TYPE`, and `NAME`. Use the `ID` values with
@@ -60,6 +80,12 @@ It prints the accessible Anytype spaces with their `ID`, `TYPE`, and `NAME`. Use
 
 `OPENAPI_MCP_HEADERS` is still supported for compatibility, but local commands are easier with `ANYTYPE_API_KEY` and
 `ANYTYPE_API_VERSION`.
+
+If you do not have a key yet, you can trigger the interactive login flow directly from `list-spaces`:
+
+```bash
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login
+```
 
 ### 2. Configure Your MCP Client
 
@@ -134,7 +160,7 @@ IDs. Global tools like cross-space search and creating new spaces are intentiona
 > is available as an alias if you prefer that wording.
 
 ```bash
-./bin/cli.mjs --allow-space space_abc123 --allow-channel space_def456
+./node_modules/.bin/tsx scripts/start-server.ts --allow-space space_abc123 --allow-channel space_def456
 ```
 
 For MCP clients that use JSON config, add the flags to `args`:
@@ -207,19 +233,29 @@ Here are some examples of how you can interact with your Anytype:
 
 ### Local Commands
 
-Run one-off commands from the repo root:
+For day-to-day local usage from the repo root, these are the correct direct commands:
 
 ```bash
-npm start -- get-key
-npm start -- list-spaces
-npm start -- --allow-space space_abc123
+./node_modules/.bin/tsx scripts/start-server.ts get-key
+ANYTYPE_API_KEY="<YOUR_API_KEY>" ANYTYPE_API_VERSION="<ANYTYPE_VERSION>" ./node_modules/.bin/tsx scripts/start-server.ts list-spaces
+./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login
+./node_modules/.bin/tsx scripts/start-server.ts --allow-space space_abc123
 ```
+
+What each one does:
+
+- `./node_modules/.bin/tsx scripts/start-server.ts get-key`: interactive login, prints a fresh API key and version
+- `./node_modules/.bin/tsx scripts/start-server.ts list-spaces`: lists accessible spaces using existing env vars
+- `./node_modules/.bin/tsx scripts/start-server.ts list-spaces --login`: logs in first, then lists spaces
+- `./node_modules/.bin/tsx scripts/start-server.ts [args...]`: runs the MCP server locally and accepts CLI args such as `--allow-space`
 
 When you want to use the built executable directly:
 
 ```bash
 npm run build
 ./bin/cli.mjs list-spaces
+./bin/cli.mjs list-spaces --login
+./bin/cli.mjs get-key
 ./bin/cli.mjs --allow-space space_abc123
 ```
 

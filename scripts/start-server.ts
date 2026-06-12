@@ -24,7 +24,7 @@ export async function main(args: string[] = process.argv.slice(2)) {
   } else if (parsedArgs.command === "get-key") {
     await generateApiKey(parsedArgs.specPath);
   } else if (parsedArgs.command === "list-spaces") {
-    await listSpaces(parsedArgs.specPath);
+    await listSpaces(parsedArgs.specPath, { login: parsedArgs.login });
   }
 }
 

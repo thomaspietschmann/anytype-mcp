@@ -4,6 +4,7 @@ export type ParsedCliArgs = {
   command: "run" | "get-key" | "list-spaces";
   specPath?: string;
   showHelp: boolean;
+  login: boolean;
   accessPolicy: AccessPolicyConfig;
 };
 
@@ -16,6 +17,7 @@ const HELP_TEXT = `Usage:
 Options:
   --allow-space <space_id>     Restrict MCP access to this Anytype space ID
   --allow-channel <space_id>   Alias for --allow-space (Anytype chat channels are spaces)
+  --login                      For list-spaces: run the interactive Anytype login flow first
   -h, --help                   Show this help text
 
 Authentication:
@@ -26,7 +28,8 @@ Examples:
   anytype-mcp --allow-space space_abc123
   anytype-mcp run ./openapi.json --allow-space space_abc123 --allow-space space_def456
   anytype-mcp get-key
-  anytype-mcp list-spaces`;
+  anytype-mcp list-spaces
+  anytype-mcp list-spaces --login`;
 
 export function parseCliArgs(args: string[]): ParsedCliArgs {
   const normalizedArgs = [...args];
@@ -40,6 +43,7 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
 
   let specPath: string | undefined;
   let showHelp = false;
+  let login = false;
   const allowedSpaceIds: string[] = [];
 
   for (let index = 0; index < normalizedArgs.length; index += 1) {
@@ -47,6 +51,11 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
 
     if (arg === "-h" || arg === "--help") {
       showHelp = true;
+      continue;
+    }
+
+    if (arg === "--login") {
+      login = true;
       continue;
     }
 
@@ -86,10 +95,15 @@ export function parseCliArgs(args: string[]): ParsedCliArgs {
     throw new Error("--allow-space and --allow-channel can only be used when running the MCP server.");
   }
 
+  if (command !== "list-spaces" && login) {
+    throw new Error("--login can only be used with list-spaces.");
+  }
+
   return {
     command,
     specPath,
     showHelp,
+    login,
     accessPolicy: {
       allowedSpaceIds,
     },

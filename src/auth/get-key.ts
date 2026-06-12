@@ -6,6 +6,35 @@ interface AuthToken {
   api_key: string;
 }
 
+export type AnytypeCredentials = {
+  apiKey: string;
+  anytypeVersion: string;
+};
+
+export function displayCredentialsInstructions({ apiKey, anytypeVersion }: AnytypeCredentials): void {
+  const localCliPath = path.resolve(process.cwd(), "bin/cli.mjs");
+  console.log(`\nYour API KEY: ${apiKey}`);
+  console.log("\nFor local commands in this repo root, export:");
+  console.log(`export ANYTYPE_API_KEY="${apiKey}"`);
+  console.log(`export ANYTYPE_API_VERSION="${anytypeVersion}"`);
+  console.log("\nThen you can discover space IDs with:");
+  console.log("npm start -- list-spaces");
+  console.log("\nAfter `npm run build`, add this to your MCP settings file as:");
+  console.log(`
+{
+  "mcpServers": {
+    "anytype": {
+      "command": "${localCliPath}",
+      "env": {
+        "ANYTYPE_API_KEY": "${apiKey}",
+        "ANYTYPE_API_VERSION": "${anytypeVersion}"
+      }
+    }
+  }
+}
+`);
+}
+
 export class ApiKeyGenerator {
   private readonly rl: readline.Interface;
   private readonly appName: string = "anytype_mcp_server";
@@ -23,30 +52,6 @@ export class ApiKeyGenerator {
     return new Promise<string>((resolve) => {
       this.rl.question(question, resolve);
     });
-  }
-
-  private displaySuccessMessage(apiKey: string, anytypeVersion: string): void {
-    const localCliPath = path.resolve(process.cwd(), "bin/cli.mjs");
-    console.log(`\nYour API KEY: ${apiKey}`);
-    console.log("\nFor local commands in this repo root, export:");
-    console.log(`export ANYTYPE_API_KEY="${apiKey}"`);
-    console.log(`export ANYTYPE_API_VERSION="${anytypeVersion}"`);
-    console.log("\nThen you can discover space IDs with:");
-    console.log("npm start -- list-spaces");
-    console.log("\nAfter `npm run build`, add this to your MCP settings file as:");
-    console.log(`
-{
-  "mcpServers": {
-    "anytype": {
-      "command": "${localCliPath}",
-      "env": {
-        "ANYTYPE_API_KEY": "${apiKey}",
-        "ANYTYPE_API_VERSION": "${anytypeVersion}"
-      }
-    }
-  }
-}
-`);
   }
 
   /**
@@ -77,7 +82,7 @@ export class ApiKeyGenerator {
   private async completeAuthentication(
     challengeId: string,
     code: string,
-  ): Promise<{ apiKey: string; anytypeVersion: string }> {
+  ): Promise<AnytypeCredentials> {
     try {
       const response = await axios.post<AuthToken>(`${this.basePath}/v1/auth/api_keys`, {
         challenge_id: challengeId,
@@ -95,7 +100,7 @@ export class ApiKeyGenerator {
     }
   }
 
-  public async generateApiKey(): Promise<void> {
+  public async authenticate(): Promise<AnytypeCredentials> {
     try {
       console.log("Starting authentication to get API key...");
 
@@ -103,14 +108,20 @@ export class ApiKeyGenerator {
       console.log("Please check Anytype Desktop for the 4-digit code");
       const code = await this.prompt("Enter the 4-digit code shown in Anytype Desktop: ");
 
-      const { apiKey, anytypeVersion } = await this.completeAuthentication(challengeId, code);
+      return await this.completeAuthentication(challengeId, code);
+    } finally {
+      this.rl.close();
+    }
+  }
+
+  public async generateApiKey(): Promise<void> {
+    try {
+      const credentials = await this.authenticate();
       console.log("Authenticated successfully!");
-      this.displaySuccessMessage(apiKey, anytypeVersion);
+      displayCredentialsInstructions(credentials);
     } catch (error) {
       console.error("Error:", error instanceof Error ? error.message : error);
       process.exit(1);
-    } finally {
-      this.rl.close();
     }
   }
 }

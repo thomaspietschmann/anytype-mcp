@@ -1,3 +1,4 @@
+import { ApiKeyGenerator, displayCredentialsInstructions, type AnytypeCredentials } from "../auth/get-key";
 import { HttpClient } from "../client/http-client";
 import { loadOpenApiSpec } from "../init-server";
 import { parseHeadersFromEnv } from "../utils/headers";
@@ -13,20 +14,38 @@ type ListSpacesResponse = {
   data?: AnytypeSpace[];
 };
 
-export async function listSpaces(specPath?: string): Promise<void> {
-  const spaces = await fetchSpaces(specPath);
+export type ListSpacesOptions = {
+  login?: boolean;
+};
+
+export async function listSpaces(specPath?: string, options: ListSpacesOptions = {}): Promise<void> {
+  const { spaces, credentials } = await fetchSpaces(specPath, options);
 
   if (spaces.length === 0) {
     console.log("No accessible spaces found.");
+    if (credentials) {
+      displayCredentialsInstructions(credentials);
+    }
     return;
+  }
+
+  if (credentials) {
+    console.log("Authenticated successfully!");
   }
 
   console.log("Accessible Anytype spaces:\n");
   console.log(formatSpacesTable(spaces));
   console.log("\nUse the ID with --allow-space or --allow-channel.");
+
+  if (credentials) {
+    displayCredentialsInstructions(credentials);
+  }
 }
 
-export async function fetchSpaces(specPath?: string): Promise<AnytypeSpace[]> {
+export async function fetchSpaces(
+  specPath?: string,
+  options: ListSpacesOptions = {},
+): Promise<{ spaces: AnytypeSpace[]; credentials?: AnytypeCredentials }> {
   const openApiSpec = await loadOpenApiSpec(specPath);
   const baseUrl = determineBaseUrl(openApiSpec);
   const operation = openApiSpec.paths?.["/v1/spaces"]?.get;
@@ -35,10 +54,16 @@ export async function fetchSpaces(specPath?: string): Promise<AnytypeSpace[]> {
     throw new Error("The OpenAPI specification does not expose GET /v1/spaces.");
   }
 
+  const credentials = options.login ? await new ApiKeyGenerator(baseUrl).authenticate() : undefined;
   const httpClient = new HttpClient(
     {
       baseUrl,
-      headers: parseHeadersFromEnv(),
+      headers: credentials
+        ? {
+            Authorization: `Bearer ${credentials.apiKey}`,
+            "Anytype-Version": credentials.anytypeVersion,
+          }
+        : parseHeadersFromEnv(),
     },
     openApiSpec,
   );
@@ -53,7 +78,10 @@ export async function fetchSpaces(specPath?: string): Promise<AnytypeSpace[]> {
   );
 
   const data = response.data as ListSpacesResponse;
-  return Array.isArray(data?.data) ? data.data : [];
+  return {
+    spaces: Array.isArray(data?.data) ? data.data : [],
+    ...(credentials ? { credentials } : {}),
+  };
 }
 
 export function formatSpacesTable(spaces: AnytypeSpace[]): string {
